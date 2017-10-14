@@ -1,19 +1,15 @@
 package main
 
 import (
-	"encoding/json"
-	"fmt"
-	"net/http"
+	"github.com/labstack/echo"
 
 	"github.com/satori/go.uuid"
-
-	"github.com/go-chi/chi"
 )
 
 var port = ":8080"
 
 type Product struct {
-	Id          string `json:"id"`
+	ID          string `json:"id"`
 	Name        string `json:"name"`
 	Description string `json:"description"`
 }
@@ -21,18 +17,17 @@ type Product struct {
 var productStorage = make(map[string]*Product)
 
 func main() {
-	router := chi.NewRouter()
-	router.Route("/pr", func(r chi.Router) {
-		r.Post("/new", func(w http.ResponseWriter, r *http.Request) {
-			var p Product
-			json.NewDecoder(r.Body).Decode(&p)
-			p.Id = uuid.NewV4().String()
-			productStorage[p.Id] = &p
-		})
-		r.Get("/all", func(w http.ResponseWriter, r *http.Request) {
-			json.NewEncoder(w).Encode(productStorage)
-		})
+	router := echo.New()
+	productGroup := router.Group("/pr")
+	productGroup.POST("/new", func(c echo.Context) error {
+		var p Product
+		c.Bind(&p)
+		p.ID = uuid.NewV4().String()
+		productStorage[p.ID] = &p
+		return c.NoContent(200)
 	})
-	fmt.Println("Listening on port", port)
-	http.ListenAndServe(port, router)
+	productGroup.GET("/all", func(c echo.Context) error {
+		return c.JSON(200, productStorage)
+	})
+	router.Start(port)
 }
